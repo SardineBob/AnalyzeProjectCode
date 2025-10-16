@@ -2,7 +2,7 @@
 FastAPI 主程式
 提供程式碼分析與 Git 分析的 API 服務
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
@@ -13,6 +13,7 @@ import asyncio
 from pathlib import Path
 from queue import Queue
 import threading
+from concurrent.futures import ThreadPoolExecutor
 
 from code_analyzer import CodeAnalyzer
 from git_analyzer import GitAnalyzer
@@ -24,8 +25,9 @@ app = FastAPI(
     version="2.1.0"
 )
 
-# 全域進度佇列
+# 全域進度佇列和執行緒池
 progress_queues: Dict[str, Queue] = {}
+executor = ThreadPoolExecutor(max_workers=4)
 
 
 class AnalyzeRequest(BaseModel):
@@ -158,31 +160,20 @@ async def analyze_git(request: AnalyzeRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"分析失敗: {str(e)}")
 
 
-@app.post("/api/analyze/all")
-async def analyze_all(request: AnalyzeRequest) -> Dict[str, Any]:
+def run_analysis_sync(request: AnalyzeRequest, session_id: str) -> Dict[str, Any]:
     """
-    執行完整分析（程式碼 + Git）
-
-    Args:
-        request: 包含專案路徑和所有配置的請求
-
-    Returns:
-        完整分析結果
+    同步執行分析（在背景執行緒中執行）
     """
-    session_id = request.session_id
-
     # 建立進度追蹤器
     def progress_callback(progress: ProgressUpdate):
         if session_id and session_id in progress_queues:
             progress_queues[session_id].put(progress)
 
-    tracker = ProgressTracker(callback=progress_callback if session_id else None)
+    tracker = ProgressTracker(callback=progress_callback)
 
     try:
-        # 初始化進度佇列
-        if session_id:
-            progress_queues[session_id] = Queue()
-            tracker.update("init", 0, 100, "開始分析...")
+        # 初始化進度
+        tracker.update("init", 0, 100, "開始分析...")
 
         # 程式碼分析
         tracker.update("code_analysis", 10, 100, "正在分析程式碼...")
@@ -215,19 +206,49 @@ async def analyze_all(request: AnalyzeRequest) -> Dict[str, Any]:
         tracker.update("completed", 100, 100, "分析完成！")
 
         return {
+            "code": code_result,
+            "git": git_result
+        }
+    except Exception as e:
+        tracker.update("error", 0, 100, f"分析失敗：{str(e)}")
+        raise
+
+
+@app.post("/api/analyze/all")
+async def analyze_all(request: AnalyzeRequest) -> Dict[str, Any]:
+    """
+    執行完整分析（程式碼 + Git）
+
+    Args:
+        request: 包含專案路徑和所有配置的請求
+
+    Returns:
+        完整分析結果
+    """
+    session_id = request.session_id
+
+    try:
+        # 初始化進度佇列
+        if session_id:
+            if session_id not in progress_queues:
+                progress_queues[session_id] = Queue()
+
+        # 在執行緒池中執行分析
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            executor,
+            run_analysis_sync,
+            request,
+            session_id
+        )
+
+        return {
             "status": "success",
-            "data": {
-                "code": code_result,
-                "git": git_result
-            }
+            "data": result
         }
     except ValueError as e:
-        if session_id:
-            tracker.update("error", 0, 100, f"錯誤：{str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        if session_id:
-            tracker.update("error", 0, 100, f"分析失敗：{str(e)}")
         raise HTTPException(status_code=500, detail=f"分析失敗: {str(e)}")
 
 

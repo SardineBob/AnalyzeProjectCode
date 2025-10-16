@@ -122,14 +122,16 @@ class CodeAnalyzer:
 
             # 更新進度
             processed += 1
-            if self.progress_tracker and processed % 10 == 0:  # 每處理10個檔案更新一次
-                progress_percentage = int(10 + (processed / total_to_process * 40))  # 10-50%
-                self.progress_tracker.update(
-                    "code_analysis",
-                    progress_percentage,
-                    100,
-                    f"正在分析程式碼... ({processed}/{total_to_process} 檔案)"
-                )
+            if self.progress_tracker:
+                # 每處理5個檔案或最後一個檔案時更新
+                if processed % 5 == 0 or processed == total_to_process:
+                    progress_percentage = int(10 + (processed / total_to_process * 40))  # 10-50%
+                    self.progress_tracker.update(
+                        "code_analysis",
+                        progress_percentage,
+                        100,
+                        f"正在分析程式碼... ({processed}/{total_to_process} 檔案)"
+                    )
 
         # 計算平均複雜度
         avg_complexity = round(complexity_sum / total_functions, 2) if total_functions > 0 else 0

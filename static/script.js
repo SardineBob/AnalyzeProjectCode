@@ -18,7 +18,6 @@ const results = document.getElementById('results');
 const gitResults = document.getElementById('gitResults');
 const progressBar = document.getElementById('progressBar');
 const progressText = document.getElementById('progressText');
-const progressDetails = document.getElementById('progressDetails');
 
 // 事件監聽
 analyzeBtn.addEventListener('click', analyzeProject);
@@ -133,23 +132,24 @@ function connectProgressStream(sessionId) {
 
 // 更新進度 UI
 function updateProgressUI(progress) {
+    console.log('Progress update:', progress);  // 除錯用
+
     // 更新進度條
     progressBar.style.width = progress.percentage + '%';
     progressText.textContent = progress.percentage + '%';
 
-    // 更新詳細訊息
-    progressDetails.textContent = progress.message;
-
-    // 根據階段更新訊息
+    // 根據階段更新主要訊息
     const loadingMessage = document.getElementById('loadingMessage');
     if (progress.stage === 'code_analysis') {
-        loadingMessage.textContent = '正在分析程式碼...';
+        loadingMessage.textContent = progress.message;
     } else if (progress.stage === 'git_analysis') {
-        loadingMessage.textContent = '正在分析 Git 歷史...';
+        loadingMessage.textContent = progress.message;
     } else if (progress.stage === 'completed') {
         loadingMessage.textContent = '分析完成！';
     } else if (progress.stage === 'error') {
         loadingMessage.textContent = '分析發生錯誤';
+    } else {
+        loadingMessage.textContent = progress.message;
     }
 }
 

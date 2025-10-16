@@ -97,14 +97,16 @@ class GitAnalyzer:
                     pass
 
             # 更新進度
-            if self.progress_tracker and commit_count % 50 == 0:  # 每處理50個commit更新一次
-                progress_percentage = int(55 + (commit_count / total_commits * 40))  # 55-95%
-                self.progress_tracker.update(
-                    "git_analysis",
-                    progress_percentage,
-                    100,
-                    f"正在分析 Git 歷史... ({commit_count}/{total_commits} commits)"
-                )
+            if self.progress_tracker:
+                # 每處理20個commits或最後一個commit時更新
+                if commit_count % 20 == 0 or commit_count == total_commits:
+                    progress_percentage = int(55 + (commit_count / total_commits * 40))  # 55-95%
+                    self.progress_tracker.update(
+                        "git_analysis",
+                        progress_percentage,
+                        100,
+                        f"正在分析 Git 歷史... ({commit_count}/{total_commits} commits)"
+                    )
 
         # 排序檔案異動次數（由多到少）
         sorted_files = sorted(

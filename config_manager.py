@@ -3,6 +3,8 @@
 負責儲存和載入使用者的分析設定
 """
 import json
+import sys
+import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
@@ -18,7 +20,15 @@ class ConfigManager:
         Args:
             config_file: 設定檔案名稱
         """
-        self.config_path = Path(__file__).parent / config_file
+        # 取得執行檔所在目錄（支援 PyInstaller 打包）
+        if getattr(sys, 'frozen', False):
+            # 打包後的執行檔，使用執行檔所在目錄
+            app_dir = Path(os.path.dirname(sys.executable))
+        else:
+            # 開發環境，使用腳本所在目錄
+            app_dir = Path(__file__).parent
+
+        self.config_path = app_dir / config_file
 
     def save_config(self, config_data: Dict[str, Any]) -> bool:
         """

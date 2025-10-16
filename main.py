@@ -18,16 +18,20 @@ from concurrent.futures import ThreadPoolExecutor
 from code_analyzer import CodeAnalyzer
 from git_analyzer import GitAnalyzer
 from progress_tracker import ProgressTracker, ProgressUpdate
+from config_manager import ConfigManager
 
 app = FastAPI(
     title="程式碼分析工具",
     description="分析專案程式碼規模、複雜度與 Git 版本控制資訊",
-    version="2.1.0"
+    version="2.2.0"
 )
 
 # 全域進度佇列和執行緒池
 progress_queues: Dict[str, Queue] = {}
 executor = ThreadPoolExecutor(max_workers=4)
+
+# 設定管理器實例
+config_manager = ConfigManager()
 
 
 class AnalyzeRequest(BaseModel):
@@ -256,6 +260,88 @@ async def analyze_all(request: AnalyzeRequest) -> Dict[str, Any]:
 async def health_check():
     """健康檢查"""
     return {"status": "ok"}
+
+
+@app.get("/api/config")
+async def get_config():
+    """
+    取得上次儲存的設定
+
+    Returns:
+        設定資料
+    """
+    try:
+        config = config_manager.get_last_config()
+        return {
+            "status": "success",
+            "data": config
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"讀取設定失敗: {str(e)}")
+
+
+class SaveConfigRequest(BaseModel):
+    """儲存設定請求模型"""
+    project_path: str
+    exclude_folders: Optional[List[str]] = None
+    exclude_code_files: Optional[List[str]] = None
+    exclude_git_files: Optional[List[str]] = None
+    start_commit: Optional[str] = None
+    end_commit: Optional[str] = None
+
+
+@app.post("/api/config")
+async def save_config(request: SaveConfigRequest):
+    """
+    儲存使用者設定
+
+    Args:
+        request: 設定資料
+
+    Returns:
+        儲存結果
+    """
+    try:
+        config_data = {
+            'project_path': request.project_path,
+            'exclude_folders': request.exclude_folders or [],
+            'exclude_code_files': request.exclude_code_files or [],
+            'exclude_git_files': request.exclude_git_files or [],
+            'start_commit': request.start_commit or '',
+            'end_commit': request.end_commit or ''
+        }
+
+        success = config_manager.save_config(config_data)
+        if success:
+            return {
+                "status": "success",
+                "message": "設定已儲存"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="儲存設定失敗")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"儲存設定失敗: {str(e)}")
+
+
+@app.delete("/api/config")
+async def clear_config():
+    """
+    清除儲存的設定
+
+    Returns:
+        清除結果
+    """
+    try:
+        success = config_manager.clear_config()
+        if success:
+            return {
+                "status": "success",
+                "message": "設定已清除"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="清除設定失敗")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"清除設定失敗: {str(e)}")
 
 
 # 掛載靜態檔案

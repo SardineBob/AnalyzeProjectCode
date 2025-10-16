@@ -25,6 +25,9 @@ projectPathInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') analyzeProject();
 });
 
+// 頁面載入時讀取上次的設定
+document.addEventListener('DOMContentLoaded', loadLastConfig);
+
 // 分析專案
 async function analyzeProject() {
     const projectPath = projectPathInput.value.trim();
@@ -52,6 +55,9 @@ async function analyzeProject() {
 
     const startCommit = startCommitInput.value.trim() || null;
     const endCommit = endCommitInput.value.trim() || null;
+
+    // 儲存設定
+    await saveCurrentConfig();
 
     // 顯示載入中
     showLoading();
@@ -538,4 +544,92 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// 載入上次的設定
+async function loadLastConfig() {
+    try {
+        const response = await fetch('/api/config');
+        if (!response.ok) {
+            console.log('沒有找到上次的設定');
+            return;
+        }
+
+        const result = await response.json();
+        const config = result.data;
+
+        // 填入各個欄位
+        if (config.project_path) {
+            projectPathInput.value = config.project_path;
+        }
+
+        if (config.exclude_folders && config.exclude_folders.length > 0) {
+            excludeFoldersInput.value = config.exclude_folders.join('\n');
+        }
+
+        if (config.exclude_code_files && config.exclude_code_files.length > 0) {
+            excludeCodeFilesInput.value = config.exclude_code_files.join('\n');
+        }
+
+        if (config.exclude_git_files && config.exclude_git_files.length > 0) {
+            excludeGitFilesInput.value = config.exclude_git_files.join('\n');
+        }
+
+        if (config.start_commit) {
+            startCommitInput.value = config.start_commit;
+        }
+
+        if (config.end_commit) {
+            endCommitInput.value = config.end_commit;
+        }
+
+        console.log('已載入上次的設定');
+    } catch (error) {
+        console.error('載入設定失敗:', error);
+    }
+}
+
+// 儲存當前設定
+async function saveCurrentConfig() {
+    try {
+        const excludeFolders = excludeFoldersInput.value
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+
+        const excludeCodeFiles = excludeCodeFilesInput.value
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+
+        const excludeGitFiles = excludeGitFilesInput.value
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+
+        const configData = {
+            project_path: projectPathInput.value.trim(),
+            exclude_folders: excludeFolders.length > 0 ? excludeFolders : null,
+            exclude_code_files: excludeCodeFiles.length > 0 ? excludeCodeFiles : null,
+            exclude_git_files: excludeGitFiles.length > 0 ? excludeGitFiles : null,
+            start_commit: startCommitInput.value.trim() || null,
+            end_commit: endCommitInput.value.trim() || null
+        };
+
+        const response = await fetch('/api/config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(configData),
+        });
+
+        if (response.ok) {
+            console.log('設定已儲存');
+        } else {
+            console.error('儲存設定失敗');
+        }
+    } catch (error) {
+        console.error('儲存設定時發生錯誤:', error);
+    }
 }

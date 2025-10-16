@@ -433,6 +433,7 @@ td:nth-child(n+2) {
     .no-print,
     .input-section,
     header,
+    .footer,
     .export-section {
         display: none !important;
     }
@@ -510,6 +511,52 @@ td:nth-child(n+2) {
     }
 }
 
+/* 頁尾樣式 */
+.footer {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 40px 30px 20px;
+    margin-top: 40px;
+}
+
+.footer-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 30px;
+    max-width: 1200px;
+    margin: 0 auto 30px;
+}
+
+.footer-section h4 {
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    font-weight: 600;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+    padding-bottom: 8px;
+}
+
+.footer-section p {
+    font-size: 0.9rem;
+    line-height: 1.8;
+    opacity: 0.9;
+    margin: 5px 0;
+}
+
+.footer-note {
+    font-size: 0.85rem !important;
+    opacity: 0.7 !important;
+    font-style: italic;
+    margin-top: 10px !important;
+}
+
+.footer-bottom {
+    text-align: center;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
 @media (max-width: 768px) {
     .input-row {
         grid-template-columns: 1fr;
@@ -533,5 +580,14 @@ td:nth-child(n+2) {
 
     th, td {
         padding: 10px;
+    }
+
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .footer {
+        padding: 30px 20px 15px;
     }
 }

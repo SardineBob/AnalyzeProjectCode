@@ -379,6 +379,54 @@ td:nth-child(n+2) {
     box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
 }
 
+/* 設定摘要樣式 (僅在列印時顯示) */
+.print-only {
+    display: none;
+}
+
+.config-summary {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+}
+
+.config-summary h2 {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    color: #495057;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 10px;
+}
+
+.config-info {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.config-item {
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.config-item:last-child {
+    border-bottom: none;
+}
+
+.config-item strong {
+    min-width: 180px;
+    color: #495057;
+}
+
+.config-item span {
+    color: #212529;
+    word-break: break-all;
+}
+
 /* 列印樣式 */
 @media print {
     /* 隱藏不需要列印的元素 */
@@ -387,6 +435,11 @@ td:nth-child(n+2) {
     header,
     .export-section {
         display: none !important;
+    }
+
+    /* 顯示設定摘要 */
+    .print-only {
+        display: block !important;
     }
 
     /* 調整容器樣式 */
@@ -402,7 +455,12 @@ td:nth-child(n+2) {
     }
 
     #results {
+        display: block !important;
         padding: 20px;
+    }
+
+    .result-section {
+        display: block !important;
     }
 
     /* 確保圖表顯示 */

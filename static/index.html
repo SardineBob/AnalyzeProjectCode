@@ -97,6 +97,45 @@
                 <button id="exportPdfBtn" class="btn btn-secondary">📄 匯出 PDF</button>
             </div>
 
+            <!-- 分析設定摘要 (僅在列印時顯示) -->
+            <section class="config-summary print-only">
+                <h2>📋 分析設定摘要</h2>
+                <div class="config-info">
+                    <div class="config-item">
+                        <strong>專案路徑:</strong>
+                        <span id="summaryProjectPath">-</span>
+                    </div>
+                    <div class="config-item">
+                        <strong>分析時間:</strong>
+                        <span id="summaryAnalysisTime">-</span>
+                    </div>
+                    <div class="config-item">
+                        <strong>排除資料夾 (程式碼):</strong>
+                        <span id="summaryExcludeFolders">無</span>
+                    </div>
+                    <div class="config-item">
+                        <strong>排除檔案 (程式碼):</strong>
+                        <span id="summaryExcludeCodeFiles">無</span>
+                    </div>
+                    <div class="config-item">
+                        <strong>排除檔案 (Git):</strong>
+                        <span id="summaryExcludeGitFiles">無</span>
+                    </div>
+                    <div class="config-item">
+                        <strong>Git 起始 Commit:</strong>
+                        <span id="summaryStartCommit">最早</span>
+                    </div>
+                    <div class="config-item">
+                        <strong>Git 結束 Commit:</strong>
+                        <span id="summaryEndCommit">最新</span>
+                    </div>
+                    <div class="config-item">
+                        <strong>最大分析 Commit 數:</strong>
+                        <span id="summaryMaxCommits">1000</span>
+                    </div>
+                </div>
+            </section>
+
             <!-- 程式碼分析結果 -->
             <section class="result-section">
                 <h2>程式碼分析結果</h2>

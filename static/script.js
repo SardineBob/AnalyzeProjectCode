@@ -166,6 +166,9 @@ function updateProgressUI(progress) {
 
 // 顯示分析結果
 function displayResults(data) {
+    // 填入設定摘要
+    fillConfigSummary();
+
     // 顯示程式碼分析結果
     if (data.code) {
         displayCodeAnalysis(data.code);
@@ -642,6 +645,42 @@ async function saveCurrentConfig() {
     } catch (error) {
         console.error('儲存設定時發生錯誤:', error);
     }
+}
+
+// 填入設定摘要
+function fillConfigSummary() {
+    // 專案路徑
+    document.getElementById('summaryProjectPath').textContent = projectPathInput.value.trim() || '-';
+
+    // 分析時間
+    const now = new Date();
+    document.getElementById('summaryAnalysisTime').textContent = now.toLocaleString('zh-TW');
+
+    // 排除資料夾
+    const excludeFolders = excludeFoldersInput.value.trim();
+    document.getElementById('summaryExcludeFolders').textContent =
+        excludeFolders ? excludeFolders.split('\n').join(', ') : '無';
+
+    // 排除檔案 (程式碼)
+    const excludeCodeFiles = excludeCodeFilesInput.value.trim();
+    document.getElementById('summaryExcludeCodeFiles').textContent =
+        excludeCodeFiles ? excludeCodeFiles.split('\n').join(', ') : '無';
+
+    // 排除檔案 (Git)
+    const excludeGitFiles = excludeGitFilesInput.value.trim();
+    document.getElementById('summaryExcludeGitFiles').textContent =
+        excludeGitFiles ? excludeGitFiles.split('\n').join(', ') : '無';
+
+    // Git 起始 Commit
+    const startCommit = startCommitInput.value.trim();
+    document.getElementById('summaryStartCommit').textContent = startCommit || '最早';
+
+    // Git 結束 Commit
+    const endCommit = endCommitInput.value.trim();
+    document.getElementById('summaryEndCommit').textContent = endCommit || '最新';
+
+    // 最大 Commit 數
+    document.getElementById('summaryMaxCommits').textContent = maxCommitsInput.value || '1000';
 }
 
 // 匯出 PDF

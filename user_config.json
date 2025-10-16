@@ -3,10 +3,15 @@
   "exclude_folders": [],
   "exclude_code_files": [],
   "exclude_git_files": [
-    "DSIC.J2AP"
+    "DSIC",
+    "DSIC.J2AP",
+    "DSIC.Normal",
+    "ROE",
+    "datasource.properties",
+    "print.worker.js"
   ],
   "start_commit": "1948eea8daa276cea6f36eca8833b426e03dbb6b",
   "end_commit": "",
   "max_commits": 10000,
-  "last_updated": "2025-10-16T11:39:00.492027"
+  "last_updated": "2025-10-16T13:29:42.768476"
 }

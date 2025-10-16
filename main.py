@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import os
+import sys
 import json
 import asyncio
 from pathlib import Path
@@ -19,6 +20,26 @@ from code_analyzer import CodeAnalyzer
 from git_analyzer import GitAnalyzer
 from progress_tracker import ProgressTracker, ProgressUpdate
 from config_manager import ConfigManager
+
+
+def get_resource_path(relative_path: str) -> Path:
+    """
+    取得資源檔案的絕對路徑（支援 PyInstaller 打包）
+
+    Args:
+        relative_path: 相對路徑
+
+    Returns:
+        資源檔案的絕對路徑
+    """
+    try:
+        # PyInstaller 打包後的臨時資料夾
+        base_path = Path(sys._MEIPASS)
+    except AttributeError:
+        # 開發環境
+        base_path = Path(__file__).parent
+
+    return base_path / relative_path
 
 app = FastAPI(
     title="程式碼分析工具",
@@ -50,7 +71,8 @@ class AnalyzeRequest(BaseModel):
 @app.get("/")
 async def root():
     """首頁"""
-    return FileResponse("static/index.html")
+    index_path = get_resource_path("static/index.html")
+    return FileResponse(str(index_path))
 
 
 @app.get("/api/progress/{session_id}")
@@ -353,9 +375,9 @@ async def clear_config():
 
 
 # 掛載靜態檔案
-static_path = Path(__file__).parent / "static"
+static_path = get_resource_path("static")
 if static_path.exists():
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
 
 
 if __name__ == "__main__":

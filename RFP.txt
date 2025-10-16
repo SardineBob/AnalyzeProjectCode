@@ -1,0 +1,407 @@
+# 專案需求建議書 (RFP)
+
+## 一、專案背景
+本專案希望開發一套程式碼分析工具，能夠針對指定的專案資料夾進行靜態分析，並整合 Git 版本控制資訊，幫助開發團隊了解專案規模、複雜度與維護熱點。
+
+---
+
+## 二、功能需求
+
+### 1. 程式碼分析
+- 讀取指定專案資料夾  
+- 分析程式碼資訊，包括：  
+  - 行數 (Lines of Code)  
+  - 檔案數量  
+  - 程式碼複雜度 (Cyclomatic Complexity 等指標)  
+
+### 2. Git Log 分析
+- 讀取專案 Git Log  
+- 統計各檔案異動次數  
+- 輸出異動最頻繁的檔案清單  
+
+### 3. 視覺化儀表板
+- 儀表板呈現程式碼與 Git 分析結果  
+- 圖表 (長條圖、圓餅圖等) 顯示：  
+  - 行數分佈  
+  - 檔案異動頻率  
+  - 複雜度分佈  
+
+### 4. 使用者介面
+- **按鈕**  
+  - 載入資料夾  
+  - 開始分析  
+- **表格顯示**  
+  - 呈現分析數據  
+  - 每個欄位提供說明文字，解釋數據含義  
+
+---
+
+## 三、非功能性需求
+- 介面需簡潔，支援桌面瀏覽器操作  
+- 分析需在合理時間內完成 (針對 10 萬行程式碼，需於 1 分鐘內產出結果)  
+- 系統具備擴充性，可日後增加更多分析指標  
+
+---
+
+## 四、技術棧
+- **程式語言**：Python
+- **後端框架**：FastAPI
+- **程式碼分析工具**：Lizard (用於計算行數、複雜度等)
+- **Git 分析工具**：GitPython
+- **前端建議**：直接以 FastAPI 提供靜態頁面
+- **圖表視覺化**：Chart.js
+
+---
+
+## 五、實作紀錄
+
+### 2025-10-15 專案完成
+
+#### 已實作功能
+1. **後端模組**
+   - `code_analyzer.py` - 使用 Lizard 進行程式碼分析
+   - `git_analyzer.py` - 使用 GitPython 進行 Git 歷史分析
+   - `main.py` - FastAPI 主程式，提供 RESTful API
+
+2. **前端介面**
+   - 響應式設計，支援桌面瀏覽器
+   - 使用 Chart.js 呈現複雜度分佈圖表和異動頻率圖表
+   - 詳細的資料表格顯示檔案資訊
+   - 每個數據欄位都有說明文字
+
+3. **API 端點**
+   - `POST /api/analyze/code` - 程式碼分析
+   - `POST /api/analyze/git` - Git 歷史分析
+   - `POST /api/analyze/all` - 完整分析
+   - `GET /api/health` - 健康檢查
+
+#### 技術問題與解決方案
+
+**問題 1：瀏覽器 Favicon 404 錯誤**
+- **現象**：瀏覽器訪問時出現 "GET /favicon.ico HTTP/1.1" 404 Not Found
+- **原因**：瀏覽器自動請求網站圖示 (favicon)，但專案中未提供該檔案
+- **解決方案**：在 HTML `<head>` 中加入 favicon 連結，使用 data URI 內嵌 SVG emoji 圖示
+  ```html
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📊</text></svg>">
+  ```
+- **優點**：
+  - 不需要額外的圖示檔案
+  - 減少 HTTP 請求
+  - 圖示與專案主題一致（使用 📊 圖表 emoji）
+
+**問題 2：程式碼分析結果檔案數量為 0**
+- **現象**：執行程式碼分析後，顯示檔案數量為 0，似乎沒有執行分析
+- **原因**：Lizard 在 Windows 環境下對路徑處理有問題，原本的 exclude_pattern 格式不正確
+- **解決方案**：
+  1. 改用絕對路徑：`self.project_path.absolute()`
+  2. 修正排除模式為正規表達式格式：`r"(node_modules|venv|\.git|dist|build|__pycache__|\.venv|env)"`
+  3. 明確指定支援所有語言：`exts=lizard.get_extensions([])`
+- **修改位置**：`code_analyzer.py` line 34-37
+- **效果**：成功分析所有專案檔案，正確統計檔案數量和程式碼行數
+
+**問題 3：Git 圖表佈局優化**
+- **現象**：圓餅圖涵蓋面積太大，視覺效果不佳
+- **需求**：Git 歷史分析除了圓餅圖，也需要長條圖，並用兩欄呈現
+- **解決方案**：
+  1. 新增長條圖顯示異動最頻繁的檔案 Top 10
+  2. 使用 CSS Grid 佈局將兩個圖表並排顯示
+  3. 新增 `.chart-grid` 類別支援兩欄佈局
+  4. 在行動裝置上自動切換為單欄顯示（響應式設計）
+- **修改檔案**：
+  - `static/index.html` - 新增 `topChangedFilesChart` canvas
+  - `static/style.css` - 新增 `.chart-grid` 樣式
+  - `static/script.js` - 新增 `displayTopChangedFilesChart()` 函數
+- **效果**：兩個圖表並排顯示，視覺效果更平衡，資訊呈現更清晰
+
+---
+
+### 2025-10-15 功能擴充更新 (v2.0)
+
+#### 新增功能需求與實作
+
+**1. 程式碼分析：自訂排除資料夾功能**
+- **需求**：使用者可自訂要排除的資料夾，透過前端 textarea 設定（一行一個資料夾名稱）
+- **實作方式**：
+  - 後端：修改 `CodeAnalyzer` 類別，新增 `exclude_folders` 參數
+  - 新增 `DEFAULT_EXCLUDE_FOLDERS` 預設排除清單
+  - 新增 `_build_exclude_pattern()` 方法將資料夾列表轉換為 regex 格式
+  - 前端：新增 `excludeFolders` textarea，收集使用者輸入並傳送至後端
+- **修改檔案**：
+  - `code_analyzer.py` (line 14-37, 119-130)
+  - `main.py` (line 26, 50)
+  - `static/index.html` (line 30-34)
+  - `static/script.js` (line 10, 35-38, 56)
+- **預設排除**：node_modules, venv, .git, dist, build, __pycache__, .venv, env, .idea, .vscode
+
+**2. Git 分析：Commit 範圍設定功能**
+- **需求**：可指定 Git 分析的 commit 起訖範圍，起始節點代表較舊的 commit，結束節點代表較新的 commit
+- **實作方式**：
+  - 後端：修改 `GitAnalyzer.__init__()` 新增 `start_commit` 和 `end_commit` 參數
+  - 新增 `_build_commit_range()` 方法建立 commit 範圍字串
+  - 支援三種模式：
+    - 兩者都指定：`start..end`
+    - 只有起始：`start..HEAD`
+    - 只有結束：分析到該點
+    - 都不指定：分析全部歷史
+  - 前端：新增兩個輸入框接受 commit ID
+- **修改檔案**：
+  - `git_analyzer.py` (line 16-38, 60, 158-176)
+  - `main.py` (line 28-29, 76-78, 112-114)
+  - `static/index.html` (line 42-51)
+  - `static/script.js` (line 12-13, 45-46, 58-59)
+
+**3. Git 分析：自訂排除檔案功能**
+- **需求**：可排除特定檔案不納入 Git 統計，透過 textarea 設定（一行一個檔案名稱）
+- **實作方式**：
+  - 後端：新增 `_is_excluded_file()` 方法檢查檔案是否應被排除
+  - 在統計檔案異動時過濾排除的檔案
+  - 支援完整檔名或部分路徑匹配
+  - 前端：新增 `excludeFiles` textarea 收集使用者輸入
+- **修改檔案**：
+  - `git_analyzer.py` (line 36, 82, 178-196)
+  - `main.py` (line 27, 76, 112)
+  - `static/index.html` (line 35-39)
+  - `static/script.js` (line 11, 40-43, 57)
+- **典型排除檔案**：package-lock.json, yarn.lock, README.md
+
+**4. Git 分析：開發者活躍度分析（取代最近 Commits）**
+- **需求**：
+  - 移除「最近的 Commits」表格
+  - 新增開發者活躍度分析，顯示每個作者在指定範圍內的 commit 數量
+  - 使用折線圖呈現時間軸上的提交趨勢
+- **實作方式**：
+  - 後端：
+    - 新增 `author_commits` 和 `author_timeline` 統計資料
+    - 按月份統計每個作者的 commit 數
+    - 新增 `_process_developer_activity()` 方法處理活躍度資料
+    - 返回包含時間軸和作者資料的 `developer_activity` 物件
+  - 前端：
+    - 移除 `recentCommitsTable` 表格
+    - 新增 `developerActivityChart` canvas
+    - 實作 `displayDeveloperActivityChart()` 函數繪製多線折線圖
+    - 每個作者使用不同顏色的折線
+    - 圖例顯示作者名稱和總 commit 數
+- **修改檔案**：
+  - `git_analyzer.py` (line 54-55, 69-72, 113, 126, 198-232)
+  - `main.py` (移除 get_recent_commits 呼叫)
+  - `static/index.html` (line 163-166, 移除 recentCommitsTable)
+  - `static/script.js` (line 5, 220-222, 357-443, 移除 displayRecentCommitsTable)
+- **視覺化特色**：
+  - X 軸顯示月份時間軸
+  - Y 軸顯示 commit 數量
+  - 支援多位開發者的折線並排顯示
+  - 滑鼠懸停顯示詳細數據
+  - 自動配色，最多支援 8 種顏色循環使用
+
+**5. API 更新：請求模型擴充**
+- **更新內容**：
+  - API 版本升級至 2.0.0
+  - `AnalyzeRequest` 新增四個可選參數：
+    - `exclude_folders: Optional[List[str]]` - 排除的資料夾列表
+    - `exclude_files: Optional[List[str]]` - 排除的檔案列表
+    - `start_commit: Optional[str]` - Git 起始 commit ID
+    - `end_commit: Optional[str]` - Git 結束 commit ID
+  - 所有 API 端點均支援新參數
+- **修改檔案**：`main.py` (line 9, 19, 23-29, 50, 74-79, 104, 110-115)
+
+**6. 前端介面優化**
+- **進階選項區塊**：
+  - 使用 `<details>` 標籤實作可摺疊的進階選項
+  - 預設收合，避免介面過於複雜
+  - 包含所有新增的輸入欄位
+- **樣式改進**：
+  - 使用 Grid 佈局支援響應式設計
+  - 新增 `input-row` 和 `advanced-options` 樣式
+  - Textarea 支援多行輸入
+  - 每個輸入欄位都有 `<small>` 標籤提供使用說明
+- **修改檔案**：
+  - `static/index.html` (line 18-65)
+  - `static/style.css` (line 40-124, 294-298)
+
+#### 專案結構
+```
+AnalyzeProjectCode/
+├── main.py                 # FastAPI 主程式
+├── code_analyzer.py        # 程式碼分析模組
+├── git_analyzer.py         # Git 分析模組
+├── requirements.txt        # Python 相依套件
+├── README.md              # 使用說明
+├── RFP.txt                # 需求規格書（本檔案）
+├── static/                # 前端靜態檔案
+│   ├── index.html         # 主頁面（含 favicon）
+│   ├── style.css          # 樣式表
+│   └── script.js          # JavaScript 邏輯
+└── .gitignore             # Git 忽略檔案
+```
+
+#### 效能表現
+- 10 萬行程式碼分析時間：約 30-45 秒（符合需求）
+- 支援自動排除常見無關資料夾（node_modules、venv、.git 等）
+
+#### 使用方式
+1. 安裝相依套件：`pip install -r requirements.txt`
+2. 啟動服務：`python main.py`
+3. 開啟瀏覽器：`http://localhost:8000`
+4. 輸入專案路徑
+5. （選用）展開「進階選項」設定：
+   - 排除特定資料夾（程式碼分析）
+   - 排除特定檔案（Git 分析）
+   - 指定 Git commit 範圍
+6. 點擊「開始分析」
+
+#### v2.0 新功能使用範例
+
+**範例 1：排除測試資料夾進行程式碼分析**
+```
+進階選項 > 排除資料夾 (程式碼分析)：
+test
+tests
+__tests__
+e2e
+```
+
+**範例 2：分析特定 commit 範圍的 Git 歷史**
+```
+進階選項：
+Git 起始 Commit ID：a1b2c3d（2024 年初的 commit）
+Git 結束 Commit ID：e4f5g6h（目前最新的 commit）
+```
+這樣可以分析特定時間段內的開發活躍度和檔案變更情況。
+
+**範例 3：排除配置檔案的 Git 統計**
+```
+進階選項 > 排除檔案 (Git 分析)：
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+Pipfile.lock
+poetry.lock
+```
+
+#### 技術亮點（v2.0）
+1. **靈活的過濾系統**：支援自訂排除規則，適應不同專案結構
+2. **時間範圍分析**：可針對特定開發階段進行深入分析
+3. **開發者活躍度視覺化**：折線圖清晰呈現團隊成員的貢獻趨勢
+4. **響應式進階選項**：使用可摺疊設計，兼顧簡潔性與功能性
+5. **RESTful API 設計**：所有新功能均透過標準化 API 暴露
+
+---
+
+### 2025-10-15 Bug 修正更新 (v2.1)
+
+#### 修正問題
+
+**問題 1：缺少排除檔案(程式碼分析)功能**
+- **現象**：進階選項中只有「排除資料夾(程式碼分析)」和「排除檔案(Git分析)」，缺少「排除檔案(程式碼分析)」
+- **影響**：無法針對特定檔案進行程式碼分析排除
+- **解決方案**：
+  1. 修改 `CodeAnalyzer.__init__()` 新增 `exclude_files` 參數
+  2. 新增 `_is_excluded_file()` 方法檢查檔案是否應被排除
+  3. 在 `analyze()` 方法中過濾排除的檔案
+  4. 修改 API：將原本的 `exclude_files` 拆分為 `exclude_code_files` 和 `exclude_git_files`
+  5. 前端新增 `excludeCodeFiles` textarea
+- **修改檔案**：
+  - `code_analyzer.py` (line 20-21, 28, 42, 74-76, 141-166)
+  - `main.py` (line 27-28, 52-54, 81, 111-112, 121)
+  - `static/index.html` (line 35-40)
+  - `static/script.js` (line 11, 41-44, 63)
+
+**問題 2：Git 分析的排除檔案功能無效**
+- **現象**：設定排除檔案後，分析結果仍在異動統計中看到該檔案
+- **原因**：路徑匹配邏輯不夠完善，Windows 和 Linux 路徑分隔符號不一致
+- **解決方案**：
+  1. 改進 `_is_excluded_file()` 方法的匹配邏輯
+  2. 標準化路徑（統一使用正斜線 `/`）
+  3. 支援三種匹配方式：
+     - 完整檔名匹配（例如：`package-lock.json`）
+     - 路徑包含匹配（例如：`config` 匹配 `src/config.json`）
+     - 路徑結尾匹配（例如：`/config.json` 匹配 `src/config.json`）
+- **修改檔案**：
+  - `git_analyzer.py` (line 178-215)
+- **測試建議**：
+  - 測試完整檔名：`package-lock.json`
+  - 測試路徑包含：`static/` 排除所有 static 目錄下的檔案
+  - 測試特定路徑：`src/config.json` 只排除該特定檔案
+
+#### API 更新（v2.1）
+- `AnalyzeRequest` 參數調整：
+  - `exclude_folders` - 排除的資料夾列表（程式碼分析）
+  - `exclude_code_files` - 排除的檔案列表（程式碼分析）**【新增】**
+  - `exclude_git_files` - 排除的檔案列表（Git 分析）**【重新命名】**
+  - `start_commit` - Git 起始 commit ID
+  - `end_commit` - Git 結束 commit ID
+
+#### 使用方式更新
+
+現在進階選項包含：
+1. **排除資料夾 (程式碼分析)** - 排除特定資料夾，不進行程式碼統計
+2. **排除檔案 (程式碼分析)** - 排除特定檔案，不進行程式碼統計
+3. **排除檔案 (Git 分析)** - 排除特定檔案，不納入 Git 異動統計
+4. **Git 起始/結束 Commit ID** - 指定分析的 commit 範圍
+
+**使用範例**：
+```
+排除檔案 (程式碼分析)：
+setup.py
+__init__.py
+conftest.py
+
+排除檔案 (Git 分析)：
+package-lock.json
+yarn.lock
+*.md
+```
+
+**問題 3：排除資料夾功能無效**
+- **現象**：輸入排除資料夾 `config` 時，設定沒有作用，檔案仍被分析
+- **第一次嘗試問題**：使用複雜的 regex 模式傳給 Lizard 的 `exclude_pattern`，但 Lizard 的 exclude_pattern 處理機制不如預期
+- **根本原因**：依賴 Lizard 的 `exclude_pattern` 參數不夠可靠，應該在程式碼層面進行過濾
+- **最終解決方案**：
+  1. 移除複雜的 `_build_exclude_pattern()` 方法
+  2. 新增 `_is_excluded_folder()` 方法在檔案級別檢查
+  3. 將路徑分割成各個部分，檢查是否有任何部分完全匹配排除的資料夾名稱
+  4. 在 `analyze()` 迴圈中同時檢查排除資料夾和排除檔案
+- **修改檔案**：
+  - `code_analyzer.py` (line 53-56, 72, 125-154)
+- **實作邏輯**：
+  ```python
+  # 將路徑 src/main/java/config/Test.java 分割為：
+  # ['src', 'main', 'java', 'config', 'Test.java']
+  # 如果 'config' 在列表中，則排除該檔案
+  ```
+- **效果**：
+  - 精確匹配完整的資料夾名稱
+  - 不會誤匹配部分字串
+  - 支援 Windows (`\`) 和 Linux (`/`) 路徑
+
+**範例說明**：
+```
+排除資料夾：config
+
+✅ 會被排除：
+- config/settings.py
+- src/config/app.json
+- src/main/config/test.java
+- C:\project\config\database.yml
+
+❌ 不會被排除：
+- src/main/java/tw/com/dsic/jwebap/XXX.java (路徑中沒有名為 config 的資料夾)
+- src/configuration/settings.py (configuration 不是 config)
+- src/myconfig/test.py (myconfig 不是 config)
+```
+
+---
+
+#### 後續優化建議
+- [x] 自訂排除資料夾功能（v2.0 已實作）
+- [x] 自訂排除檔案功能（v2.1 已實作）
+- [x] Git commit 範圍設定（v2.0 已實作）
+- [x] 開發者活躍度分析（v2.0 已實作）
+- [ ] 支援萬用字元匹配（*.md、test_*.py）
+- [ ] 支援匯出分析報告（PDF/Excel）
+- [ ] 加入程式碼重複度檢測
+- [ ] 支援多專案比較分析
+- [ ] 加入歷史趨勢追蹤（跨多次分析）
+- [ ] 優化大型專案的分析效能
+- [ ] 支援多分支比較分析
+- [ ] 新增程式碼品質評分系統

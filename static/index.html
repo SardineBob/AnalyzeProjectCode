@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>程式碼分析工具</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>📊</text></svg>">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 程式碼分析工具</h1>
+            <p class="subtitle">分析專案程式碼規模、複雜度與 Git 版本控制資訊</p>
+        </header>
+
+        <div class="input-section">
+            <div class="input-row">
+                <div class="input-group full-width">
+                    <label for="projectPath">專案資料夾路徑：</label>
+                    <input type="text" id="projectPath" placeholder="例如：C:\Projects\MyProject 或 /home/user/projects/myproject">
+                    <small>掃描語言：.py, .java, .html, .js, .css</small>
+                </div>
+            </div>
+
+            <details class="advanced-options">
+                <summary>進階選項</summary>
+                <div class="options-content">
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="excludeFolders">排除資料夾 (程式碼分析)：</label>
+                            <textarea id="excludeFolders" rows="4" placeholder="一行一個資料夾名稱，例如：&#10;test&#10;docs&#10;examples"></textarea>
+                            <small>預設已排除：node_modules, venv, .git, dist, build, __pycache__, .venv, env, .idea, .vscode</small>
+                        </div>
+                        <div class="input-group">
+                            <label for="excludeCodeFiles">排除檔案 (程式碼分析)：</label>
+                            <textarea id="excludeCodeFiles" rows="4" placeholder="一行一個檔案名稱，例如：&#10;setup.py&#10;config.js&#10;test_*.py"></textarea>
+                            <small>預設已排除：min.js, jquery, knockout, sockjs, bootstrap, moment, api.js, .worker.js</small>
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="excludeGitFiles">排除檔案 (Git 分析)：</label>
+                            <textarea id="excludeGitFiles" rows="4" placeholder="一行一個檔案名稱，例如：&#10;package-lock.json&#10;yarn.lock&#10;README.md"></textarea>
+                            <small>這些檔案在 Git 異動統計中會被排除</small>
+                        </div>
+                        <div class="input-group">
+                            <!-- 空白，保持對稱 -->
+                        </div>
+                    </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="startCommit">Git 起始 Commit ID (較舊)：</label>
+                            <input type="text" id="startCommit" placeholder="例如：a1b2c3d 或完整 commit hash">
+                            <small>指定分析的起始 commit 節點（留空表示從最早開始）</small>
+                        </div>
+                        <div class="input-group">
+                            <label for="endCommit">Git 結束 Commit ID (較新)：</label>
+                            <input type="text" id="endCommit" placeholder="例如：e4f5g6h 或完整 commit hash">
+                            <small>指定分析的結束 commit 節點（留空表示到最新）</small>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <div class="button-group">
+                <button id="analyzeBtn" class="btn btn-primary">開始分析</button>
+            </div>
+
+            <div id="loadingIndicator" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>分析中，請稍候...</p>
+            </div>
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+        </div>
+
+        <div id="results" style="display: none;">
+            <!-- 程式碼分析結果 -->
+            <section class="result-section">
+                <h2>程式碼分析結果</h2>
+                <div class="cards">
+                    <div class="card">
+                        <h3>檔案數量</h3>
+                        <p class="value" id="totalFiles">-</p>
+                        <p class="description">專案中的程式碼檔案總數</p>
+                    </div>
+                    <div class="card">
+                        <h3>程式碼行數</h3>
+                        <p class="value" id="totalLines">-</p>
+                        <p class="description">非空白的有效程式碼行數 (NLOC)</p>
+                    </div>
+                    <div class="card">
+                        <h3>函數數量</h3>
+                        <p class="value" id="totalFunctions">-</p>
+                        <p class="description">專案中定義的函數總數</p>
+                    </div>
+                    <div class="card">
+                        <h3>平均複雜度</h3>
+                        <p class="value" id="avgComplexity">-</p>
+                        <p class="description">Cyclomatic Complexity 平均值，數值越高表示程式碼越複雜</p>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="complexityChart"></canvas>
+                </div>
+
+                <div class="table-container">
+                    <h3>最複雜的檔案 (Top 20)</h3>
+                    <table id="filesTable">
+                        <thead>
+                            <tr>
+                                <th>檔案名稱</th>
+                                <th>行數 (NLOC)</th>
+                                <th>函數數量</th>
+                                <th>總複雜度</th>
+                                <th>平均複雜度</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Git 分析結果 -->
+            <section id="gitResults" class="result-section" style="display: none;">
+                <h2>Git 歷史分析</h2>
+                <div class="cards">
+                    <div class="card">
+                        <h3>總 Commits</h3>
+                        <p class="value" id="totalCommits">-</p>
+                        <p class="description">已分析的 commit 總數</p>
+                    </div>
+                    <div class="card">
+                        <h3>貢獻者</h3>
+                        <p class="value" id="totalAuthors">-</p>
+                        <p class="description">參與開發的作者人數</p>
+                    </div>
+                    <div class="card">
+                        <h3>異動檔案</h3>
+                        <p class="value" id="totalFilesChanged">-</p>
+                        <p class="description">曾經修改過的檔案總數</p>
+                    </div>
+                    <div class="card">
+                        <h3>新增/刪除行數</h3>
+                        <p class="value" id="totalChanges">-</p>
+                        <p class="description">累計的程式碼新增與刪除行數</p>
+                    </div>
+                </div>
+
+                <div class="chart-grid">
+                    <div class="chart-container">
+                        <canvas id="topChangedFilesChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="changeFrequencyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <h3>異動最頻繁的檔案 (Top 20)</h3>
+                    <table id="changedFilesTable">
+                        <thead>
+                            <tr>
+                                <th>檔案名稱</th>
+                                <th>異動次數</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="chart-container" style="margin-top: 30px;">
+                    <h3 style="margin-bottom: 20px;">開發者活躍度分析</h3>
+                    <canvas id="developerActivityChart"></canvas>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

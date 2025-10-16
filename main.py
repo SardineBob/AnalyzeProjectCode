@@ -43,6 +43,7 @@ class AnalyzeRequest(BaseModel):
     exclude_git_files: Optional[List[str]] = None  # 排除的檔案列表（Git 分析）
     start_commit: Optional[str] = None  # Git 起始 commit ID
     end_commit: Optional[str] = None  # Git 結束 commit ID
+    max_commits: Optional[int] = 1000  # Git 最大分析 commit 數量
 
 
 @app.get("/")
@@ -201,7 +202,7 @@ def run_analysis_sync(request: AnalyzeRequest, session_id: str) -> Dict[str, Any
                 end_commit=request.end_commit,
                 progress_tracker=tracker
             )
-            git_result = git_analyzer.analyze()
+            git_result = git_analyzer.analyze(max_commits=request.max_commits or 1000)
             tracker.update("git_analysis", 95, 100, "Git 分析完成")
         except ValueError:
             # 不是 Git 倉庫，跳過 Git 分析
@@ -288,6 +289,7 @@ class SaveConfigRequest(BaseModel):
     exclude_git_files: Optional[List[str]] = None
     start_commit: Optional[str] = None
     end_commit: Optional[str] = None
+    max_commits: Optional[int] = 1000
 
 
 @app.post("/api/config")
@@ -308,7 +310,8 @@ async def save_config(request: SaveConfigRequest):
             'exclude_code_files': request.exclude_code_files or [],
             'exclude_git_files': request.exclude_git_files or [],
             'start_commit': request.start_commit or '',
-            'end_commit': request.end_commit or ''
+            'end_commit': request.end_commit or '',
+            'max_commits': request.max_commits or 1000
         }
 
         success = config_manager.save_config(config_data)

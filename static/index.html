@@ -61,6 +61,16 @@
                             <small>指定分析的結束 commit 節點（留空表示到最新）</small>
                         </div>
                     </div>
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label for="maxCommits">Git 最大分析 Commit 數量：</label>
+                            <input type="number" id="maxCommits" placeholder="預設：1000" min="1" max="10000" value="1000">
+                            <small>限制分析的最大 commit 數量，避免大型專案分析時間過長（範圍：1-10000）</small>
+                        </div>
+                        <div class="input-group">
+                            <!-- 空白，保持對稱 -->
+                        </div>
+                    </div>
                 </div>
             </details>
 
@@ -82,6 +92,11 @@
         </div>
 
         <div id="results" style="display: none;">
+            <!-- 匯出按鈕 -->
+            <div class="export-section no-print">
+                <button id="exportPdfBtn" class="btn btn-secondary">📄 匯出 PDF</button>
+            </div>
+
             <!-- 程式碼分析結果 -->
             <section class="result-section">
                 <h2>程式碼分析結果</h2>

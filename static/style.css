@@ -353,6 +353,105 @@ td:nth-child(n+2) {
     text-align: center;
 }
 
+/* 匯出按鈕區域 */
+.export-section {
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.btn-secondary {
+    background: #28a745;
+    color: white;
+    padding: 10px 25px;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-secondary:hover {
+    background: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+}
+
+/* 列印樣式 */
+@media print {
+    /* 隱藏不需要列印的元素 */
+    .no-print,
+    .input-section,
+    header,
+    .export-section {
+        display: none !important;
+    }
+
+    /* 調整容器樣式 */
+    body {
+        background: white;
+        padding: 0;
+    }
+
+    .container {
+        max-width: 100%;
+        box-shadow: none;
+        border-radius: 0;
+    }
+
+    #results {
+        padding: 20px;
+    }
+
+    /* 確保圖表顯示 */
+    .chart-container {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    /* 確保表格顯示 */
+    .table-container {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    /* 調整標題樣式 */
+    .result-section h2 {
+        color: #333;
+        border-bottom: 2px solid #667eea;
+        page-break-after: avoid;
+    }
+
+    /* 卡片樣式調整 */
+    .card {
+        page-break-inside: avoid;
+        break-inside: avoid;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    /* 確保表格邊框顯示 */
+    table {
+        border-collapse: collapse;
+    }
+
+    th, td {
+        border: 1px solid #ddd;
+    }
+
+    thead {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    /* 避免圖表網格分頁 */
+    .chart-grid {
+        page-break-inside: avoid;
+    }
+}
+
 @media (max-width: 768px) {
     .input-row {
         grid-template-columns: 1fr;

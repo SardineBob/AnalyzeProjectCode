@@ -81,6 +81,7 @@ class ConfigManager:
             'exclude_git_files': [],
             'start_commit': '',
             'end_commit': '',
+            'max_commits': 1000,
             'last_updated': None
         }
 

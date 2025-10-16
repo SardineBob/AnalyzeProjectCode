@@ -12,18 +12,21 @@ const excludeCodeFilesInput = document.getElementById('excludeCodeFiles');
 const excludeGitFilesInput = document.getElementById('excludeGitFiles');
 const startCommitInput = document.getElementById('startCommit');
 const endCommitInput = document.getElementById('endCommit');
+const maxCommitsInput = document.getElementById('maxCommits');
 const loadingIndicator = document.getElementById('loadingIndicator');
 const errorMessage = document.getElementById('errorMessage');
 const results = document.getElementById('results');
 const gitResults = document.getElementById('gitResults');
 const progressBar = document.getElementById('progressBar');
 const progressText = document.getElementById('progressText');
+const exportPdfBtn = document.getElementById('exportPdfBtn');
 
 // 事件監聽
 analyzeBtn.addEventListener('click', analyzeProject);
 projectPathInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') analyzeProject();
 });
+exportPdfBtn.addEventListener('click', exportToPdf);
 
 // 頁面載入時讀取上次的設定
 document.addEventListener('DOMContentLoaded', loadLastConfig);
@@ -55,6 +58,7 @@ async function analyzeProject() {
 
     const startCommit = startCommitInput.value.trim() || null;
     const endCommit = endCommitInput.value.trim() || null;
+    const maxCommits = parseInt(maxCommitsInput.value) || 1000;
 
     // 儲存設定
     await saveCurrentConfig();
@@ -78,7 +82,8 @@ async function analyzeProject() {
             exclude_code_files: excludeCodeFiles.length > 0 ? excludeCodeFiles : null,
             exclude_git_files: excludeGitFiles.length > 0 ? excludeGitFiles : null,
             start_commit: startCommit,
-            end_commit: endCommit
+            end_commit: endCommit,
+            max_commits: maxCommits
         };
 
         const response = await fetch('/api/analyze/all', {
@@ -583,6 +588,10 @@ async function loadLastConfig() {
             endCommitInput.value = config.end_commit;
         }
 
+        if (config.max_commits) {
+            maxCommitsInput.value = config.max_commits;
+        }
+
         console.log('已載入上次的設定');
     } catch (error) {
         console.error('載入設定失敗:', error);
@@ -613,7 +622,8 @@ async function saveCurrentConfig() {
             exclude_code_files: excludeCodeFiles.length > 0 ? excludeCodeFiles : null,
             exclude_git_files: excludeGitFiles.length > 0 ? excludeGitFiles : null,
             start_commit: startCommitInput.value.trim() || null,
-            end_commit: endCommitInput.value.trim() || null
+            end_commit: endCommitInput.value.trim() || null,
+            max_commits: parseInt(maxCommitsInput.value) || 1000
         };
 
         const response = await fetch('/api/config', {
@@ -632,4 +642,10 @@ async function saveCurrentConfig() {
     } catch (error) {
         console.error('儲存設定時發生錯誤:', error);
     }
+}
+
+// 匯出 PDF
+function exportToPdf() {
+    // 觸發瀏覽器列印功能
+    window.print();
 }

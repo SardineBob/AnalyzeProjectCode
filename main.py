@@ -382,4 +382,25 @@ if static_path.exists():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import webbrowser
+    import threading
+
+    # 伺服器設定
+    host = "127.0.0.1"
+    port = 8000
+    url = f"http://{host}:{port}"
+
+    # 延遲開啟瀏覽器（等待伺服器啟動）
+    def open_browser():
+        import time
+        time.sleep(1.5)  # 等待 1.5 秒讓伺服器完全啟動
+        print(f"\n正在開啟瀏覽器: {url}\n")
+        webbrowser.open(url)
+
+    # 在背景執行緒中開啟瀏覽器
+    threading.Thread(target=open_browser, daemon=True).start()
+
+    # 啟動伺服器
+    print(f"伺服器啟動中...")
+    print(f"存取網址: {url}")
+    uvicorn.run(app, host=host, port=port)

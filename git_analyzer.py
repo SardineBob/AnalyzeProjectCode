@@ -224,11 +224,11 @@ class GitAnalyzer:
             if exclude_normalized == file_name:
                 return True
             # 2. 路徑包含匹配（支援部分路徑）
-            if exclude_normalized in normalized_path:
-                return True
+            #if exclude_normalized in normalized_path:
+            #    return True
             # 3. 路徑結尾匹配（例如 "/config.json" 匹配 "src/config.json"）
-            if normalized_path.endswith(exclude_normalized):
-                return True
+            #if normalized_path.endswith(exclude_normalized):
+            #    return True
 
         return False
 

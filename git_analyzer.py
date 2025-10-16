@@ -14,7 +14,7 @@ class GitAnalyzer:
     """Git 歷史分析器"""
 
     def __init__(self, project_path: str, exclude_files: List[str] = None,
-                 start_commit: str = None, end_commit: str = None):
+                 start_commit: str = None, end_commit: str = None, progress_tracker=None):
         """
         初始化 Git 分析器
 
@@ -23,6 +23,7 @@ class GitAnalyzer:
             exclude_files: 排除的檔案名稱列表
             start_commit: 起始 commit ID（較舊的節點）
             end_commit: 結束 commit ID（較新的節點）
+            progress_tracker: 進度追蹤器實例
         """
         self.project_path = Path(project_path)
         if not self.project_path.exists():
@@ -36,6 +37,7 @@ class GitAnalyzer:
         self.exclude_files = exclude_files or []
         self.start_commit = start_commit
         self.end_commit = end_commit
+        self.progress_tracker = progress_tracker
 
     def analyze(self, max_commits: int = 1000) -> Dict[str, Any]:
         """
@@ -59,8 +61,12 @@ class GitAnalyzer:
         # 建立 commit 範圍
         commit_range = self._build_commit_range()
 
+        # 先計算總 commit 數（用於進度顯示）
+        commits_list = list(self.repo.iter_commits(commit_range, max_count=max_commits))
+        total_commits = len(commits_list)
+
         # 遍歷 commits
-        for commit in self.repo.iter_commits(commit_range, max_count=max_commits):
+        for commit in commits_list:
             commit_count += 1
             author_name = commit.author.name
             authors.add(author_name)
@@ -89,6 +95,16 @@ class GitAnalyzer:
                     total_deletions += stats.get('deletions', 0)
                 except:
                     pass
+
+            # 更新進度
+            if self.progress_tracker and commit_count % 50 == 0:  # 每處理50個commit更新一次
+                progress_percentage = int(55 + (commit_count / total_commits * 40))  # 55-95%
+                self.progress_tracker.update(
+                    "git_analysis",
+                    progress_percentage,
+                    100,
+                    f"正在分析 Git 歷史... ({commit_count}/{total_commits} commits)"
+                )
 
         # 排序檔案異動次數（由多到少）
         sorted_files = sorted(

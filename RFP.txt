@@ -392,11 +392,126 @@ yarn.lock
 
 ---
 
+### 2025-10-16 進度追蹤功能更新 (v2.2)
+
+#### 新增功能
+
+**即時分析進度顯示**
+- **需求**：使用者可在分析過程中即時查看分析進度，了解當前執行狀態
+- **技術實作**：
+  1. **後端架構**：
+     - 新增 `progress_tracker.py` 模組：
+       - `ProgressUpdate` dataclass：儲存進度資料（階段、當前值、總數、訊息、時間戳記）
+       - `ProgressTracker` 類別：管理進度更新和回調
+     - 修改 `main.py` 新增 SSE (Server-Sent Events) 支援：
+       - `/api/progress/{session_id}` 端點提供進度串流
+       - 全域 `progress_queues` 字典管理各會話的進度佇列
+       - `analyze_all` 端點整合進度追蹤器
+     - 修改分析器支援進度回報：
+       - `CodeAnalyzer.__init__()` 新增 `progress_tracker` 參數
+       - 每處理 10 個檔案更新一次進度（10-50%）
+       - `GitAnalyzer.__init__()` 新增 `progress_tracker` 參數
+       - 每處理 50 個 commits 更新一次進度（55-95%）
+
+  2. **前端架構**：
+     - HTML 進度 UI 元件：
+       - `progress-container`：進度條容器
+       - `progress-bar` 和 `progress-fill`：進度條視覺效果
+       - `progressText`：百分比顯示
+       - `progressDetails`：詳細訊息顯示
+     - CSS 進度條樣式：
+       - 漸層背景效果
+       - 閃爍動畫 (shimmer effect)
+       - 平滑的寬度過渡動畫
+     - JavaScript SSE 連接：
+       - `generateSessionId()`：生成唯一會話 ID
+       - `connectProgressStream()`：建立 SSE 連接
+       - `updateProgressUI()`：更新進度條和訊息
+
+  3. **進度階段**：
+     - `init` (0%)：初始化
+     - `code_analysis` (10-50%)：程式碼分析中
+     - `git_analysis` (55-95%)：Git 歷史分析中
+     - `completed` (100%)：分析完成
+     - `error`：發生錯誤
+
+- **修改檔案**：
+  - `progress_tracker.py` (新增)
+  - `main.py` (line 19, 28, 52, 93-101, 172-231)
+  - `code_analyzer.py` (line 27, 54, 82-85, 122-131)
+  - `git_analyzer.py` (line 17, 40, 64-66, 99-107)
+  - `static/index.html` (line 71-81)
+  - `static/style.css` (line 172-232)
+  - `static/script.js` (line 19-21, 62-66, 96-98, 100-154)
+
+- **技術特色**：
+  1. **Server-Sent Events (SSE)**：單向即時通訊，比輪詢更高效
+  2. **Session-based 追蹤**：每個分析請求有獨立的 session ID，支援多用戶同時分析
+  3. **非阻塞式更新**：使用 Queue 實現線程安全的進度傳遞
+  4. **自動清理**：SSE 連接結束後自動清理進度佇列
+  5. **視覺化回饋**：
+     - 進度條即時更新
+     - 百分比數字顯示
+     - 當前階段文字說明
+     - 處理數量即時顯示（例如：正在分析程式碼... (45/120 檔案)）
+
+- **使用者體驗改善**：
+  - 分析大型專案時不再需要等待黑盒子
+  - 清楚知道當前分析進度和預計剩餘時間
+  - 出錯時立即顯示錯誤訊息
+  - 進度條動畫提供流暢的視覺反饋
+
+- **API 更新**：
+  - `AnalyzeRequest` 新增 `session_id` 參數
+  - 新增 `GET /api/progress/{session_id}` SSE 端點
+
+#### 實作細節
+
+**SSE 事件格式**：
+```json
+{
+  "stage": "code_analysis",
+  "current": 45,
+  "total": 100,
+  "message": "正在分析程式碼... (45/120 檔案)",
+  "percentage": 45,
+  "timestamp": "2025-10-16 14:30:25"
+}
+```
+
+**進度追蹤流程**：
+```
+1. 用戶點擊「開始分析」
+   ↓
+2. 前端生成 session_id
+   ↓
+3. 建立 SSE 連接到 /api/progress/{session_id}
+   ↓
+4. 發送 POST 請求到 /api/analyze/all (包含 session_id)
+   ↓
+5. 後端建立進度佇列並開始分析
+   ↓
+6. 分析過程中定期推送進度更新
+   ↓
+7. SSE 接收進度並更新 UI
+   ↓
+8. 分析完成/錯誤時關閉 SSE 連接
+```
+
+#### 專案版本歷程
+- v1.0：基礎程式碼與 Git 分析功能
+- v2.0：自訂排除、Commit 範圍、開發者活躍度
+- v2.1：Bug 修正，完善排除邏輯
+- v2.2：即時進度追蹤功能 **【當前版本】**
+
+---
+
 #### 後續優化建議
 - [x] 自訂排除資料夾功能（v2.0 已實作）
 - [x] 自訂排除檔案功能（v2.1 已實作）
 - [x] Git commit 範圍設定（v2.0 已實作）
 - [x] 開發者活躍度分析（v2.0 已實作）
+- [x] 即時分析進度顯示（v2.2 已實作）
 - [ ] 支援萬用字元匹配（*.md、test_*.py）
 - [ ] 支援匯出分析報告（PDF/Excel）
 - [ ] 加入程式碼重複度檢測

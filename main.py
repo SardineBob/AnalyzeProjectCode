@@ -4,25 +4,34 @@ FastAPI 主程式
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import os
+import json
+import asyncio
 from pathlib import Path
+from queue import Queue
+import threading
 
 from code_analyzer import CodeAnalyzer
 from git_analyzer import GitAnalyzer
+from progress_tracker import ProgressTracker, ProgressUpdate
 
 app = FastAPI(
     title="程式碼分析工具",
     description="分析專案程式碼規模、複雜度與 Git 版本控制資訊",
-    version="2.0.0"
+    version="2.1.0"
 )
+
+# 全域進度佇列
+progress_queues: Dict[str, Queue] = {}
 
 
 class AnalyzeRequest(BaseModel):
     """分析請求模型"""
     project_path: str
+    session_id: Optional[str] = None  # 會話 ID（用於進度追蹤）
     exclude_folders: Optional[List[str]] = None  # 排除的資料夾列表（程式碼分析）
     exclude_code_files: Optional[List[str]] = None  # 排除的檔案列表（程式碼分析）
     exclude_git_files: Optional[List[str]] = None  # 排除的檔案列表（Git 分析）
@@ -34,6 +43,62 @@ class AnalyzeRequest(BaseModel):
 async def root():
     """首頁"""
     return FileResponse("static/index.html")
+
+
+@app.get("/api/progress/{session_id}")
+async def progress_stream(session_id: str):
+    """
+    SSE 進度串流端點
+
+    Args:
+        session_id: 分析會話 ID
+
+    Returns:
+        Server-Sent Events 串流
+    """
+    async def event_generator():
+        # 建立進度佇列
+        if session_id not in progress_queues:
+            progress_queues[session_id] = Queue()
+
+        queue = progress_queues[session_id]
+
+        try:
+            while True:
+                # 檢查佇列中是否有新的進度更新
+                if not queue.empty():
+                    progress: ProgressUpdate = queue.get()
+
+                    # 轉換為 SSE 格式
+                    data = {
+                        "stage": progress.stage,
+                        "current": progress.current,
+                        "total": progress.total,
+                        "message": progress.message,
+                        "percentage": int((progress.current / progress.total * 100) if progress.total > 0 else 0),
+                        "timestamp": progress.timestamp
+                    }
+
+                    yield f"data: {json.dumps(data)}\n\n"
+
+                    # 如果是完成訊息，結束串流
+                    if progress.stage == "completed" or progress.stage == "error":
+                        break
+
+                await asyncio.sleep(0.1)  # 避免 CPU 過度使用
+        finally:
+            # 清理佇列
+            if session_id in progress_queues:
+                del progress_queues[session_id]
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        }
+    )
 
 
 @app.post("/api/analyze/code")
@@ -104,28 +169,50 @@ async def analyze_all(request: AnalyzeRequest) -> Dict[str, Any]:
     Returns:
         完整分析結果
     """
+    session_id = request.session_id
+
+    # 建立進度追蹤器
+    def progress_callback(progress: ProgressUpdate):
+        if session_id and session_id in progress_queues:
+            progress_queues[session_id].put(progress)
+
+    tracker = ProgressTracker(callback=progress_callback if session_id else None)
+
     try:
+        # 初始化進度佇列
+        if session_id:
+            progress_queues[session_id] = Queue()
+            tracker.update("init", 0, 100, "開始分析...")
+
         # 程式碼分析
+        tracker.update("code_analysis", 10, 100, "正在分析程式碼...")
         code_analyzer = CodeAnalyzer(
             request.project_path,
             exclude_folders=request.exclude_folders,
-            exclude_files=request.exclude_code_files
+            exclude_files=request.exclude_code_files,
+            progress_tracker=tracker
         )
         code_result = code_analyzer.analyze()
+        tracker.update("code_analysis", 50, 100, "程式碼分析完成")
 
         # Git 分析（如果是 Git 倉庫）
         git_result = None
         try:
+            tracker.update("git_analysis", 55, 100, "正在分析 Git 歷史...")
             git_analyzer = GitAnalyzer(
                 request.project_path,
                 exclude_files=request.exclude_git_files,
                 start_commit=request.start_commit,
-                end_commit=request.end_commit
+                end_commit=request.end_commit,
+                progress_tracker=tracker
             )
             git_result = git_analyzer.analyze()
+            tracker.update("git_analysis", 95, 100, "Git 分析完成")
         except ValueError:
             # 不是 Git 倉庫，跳過 Git 分析
-            pass
+            tracker.update("git_analysis", 95, 100, "專案不是 Git 倉庫，跳過 Git 分析")
+
+        tracker.update("completed", 100, 100, "分析完成！")
 
         return {
             "status": "success",
@@ -135,8 +222,12 @@ async def analyze_all(request: AnalyzeRequest) -> Dict[str, Any]:
             }
         }
     except ValueError as e:
+        if session_id:
+            tracker.update("error", 0, 100, f"錯誤：{str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        if session_id:
+            tracker.update("error", 0, 100, f"分析失敗：{str(e)}")
         raise HTTPException(status_code=500, detail=f"分析失敗: {str(e)}")
 
 

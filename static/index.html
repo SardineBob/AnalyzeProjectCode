@@ -70,7 +70,14 @@
 
             <div id="loadingIndicator" class="loading" style="display: none;">
                 <div class="spinner"></div>
-                <p>分析中，請稍候...</p>
+                <p id="loadingMessage">分析中，請稍候...</p>
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div id="progressBar" class="progress-fill"></div>
+                    </div>
+                    <div id="progressText" class="progress-text">0%</div>
+                </div>
+                <div id="progressDetails" class="progress-details"></div>
             </div>
             <div id="errorMessage" class="error-message" style="display: none;"></div>
         </div>

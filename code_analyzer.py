@@ -24,7 +24,7 @@ class CodeAnalyzer:
     ]
 
     def __init__(self, project_path: str, exclude_folders: List[str] = None,
-                 exclude_files: List[str] = None):
+                 exclude_files: List[str] = None, progress_tracker=None):
         """
         初始化程式碼分析器
 
@@ -32,6 +32,7 @@ class CodeAnalyzer:
             project_path: 專案資料夾路徑
             exclude_folders: 自訂排除的資料夾列表，如果為 None 則使用預設值
             exclude_files: 自訂排除的檔案列表（檔案名稱或路徑）
+            progress_tracker: 進度追蹤器實例
         """
         self.project_path = Path(project_path)
         if not self.project_path.exists():
@@ -50,6 +51,8 @@ class CodeAnalyzer:
         else:
             self.exclude_files = self.DEFAULT_EXCLUDE_FILES.copy()
             self.exclude_files.extend(exclude_files)
+
+        self.progress_tracker = progress_tracker
 
     def analyze(self) -> Dict[str, Any]:
         """
@@ -77,7 +80,12 @@ class CodeAnalyzer:
 
         file_details = []
 
-        for file_info in analysis:
+        # 將分析結果轉換為列表以計算總數
+        analysis_list = list(analysis)
+        total_to_process = len(analysis_list)
+        processed = 0
+
+        for file_info in analysis_list:
             # 檢查是否應該排除此檔案（排除資料夾和排除檔案）
             if self._is_excluded_file(file_info.filename) or self._is_excluded_folder(file_info.filename):
                 continue
@@ -111,6 +119,17 @@ class CodeAnalyzer:
                 'complexity': file_complexity,
                 'avg_complexity': round(file_complexity / file_functions, 2) if file_functions > 0 else 0
             })
+
+            # 更新進度
+            processed += 1
+            if self.progress_tracker and processed % 10 == 0:  # 每處理10個檔案更新一次
+                progress_percentage = int(10 + (processed / total_to_process * 40))  # 10-50%
+                self.progress_tracker.update(
+                    "code_analysis",
+                    progress_percentage,
+                    100,
+                    f"正在分析程式碼... ({processed}/{total_to_process} 檔案)"
+                )
 
         # 計算平均複雜度
         avg_complexity = round(complexity_sum / total_functions, 2) if total_functions > 0 else 0

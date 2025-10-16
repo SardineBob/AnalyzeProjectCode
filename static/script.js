@@ -16,6 +16,9 @@ const loadingIndicator = document.getElementById('loadingIndicator');
 const errorMessage = document.getElementById('errorMessage');
 const results = document.getElementById('results');
 const gitResults = document.getElementById('gitResults');
+const progressBar = document.getElementById('progressBar');
+const progressText = document.getElementById('progressText');
+const progressDetails = document.getElementById('progressDetails');
 
 // 事件監聽
 analyzeBtn.addEventListener('click', analyzeProject);
@@ -56,9 +59,16 @@ async function analyzeProject() {
     hideError();
     results.style.display = 'none';
 
+    // 生成會話 ID
+    const sessionId = generateSessionId();
+
+    // 連接進度串流
+    const eventSource = connectProgressStream(sessionId);
+
     try {
         const requestBody = {
             project_path: projectPath,
+            session_id: sessionId,
             exclude_folders: excludeFolders.length > 0 ? excludeFolders : null,
             exclude_code_files: excludeCodeFiles.length > 0 ? excludeCodeFiles : null,
             exclude_git_files: excludeGitFiles.length > 0 ? excludeGitFiles : null,
@@ -83,8 +93,63 @@ async function analyzeProject() {
         displayResults(result.data);
     } catch (error) {
         showError(error.message);
+        if (eventSource) {
+            eventSource.close();
+        }
     } finally {
         hideLoading();
+        if (eventSource) {
+            eventSource.close();
+        }
+    }
+}
+
+// 生成會話 ID
+function generateSessionId() {
+    return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+// 連接進度串流
+function connectProgressStream(sessionId) {
+    const eventSource = new EventSource(`/api/progress/${sessionId}`);
+
+    eventSource.onmessage = (event) => {
+        const progress = JSON.parse(event.data);
+        updateProgressUI(progress);
+
+        // 如果完成或錯誤，關閉連接
+        if (progress.stage === 'completed' || progress.stage === 'error') {
+            eventSource.close();
+        }
+    };
+
+    eventSource.onerror = (error) => {
+        console.error('SSE 連接錯誤:', error);
+        eventSource.close();
+    };
+
+    return eventSource;
+}
+
+// 更新進度 UI
+function updateProgressUI(progress) {
+    // 更新進度條
+    progressBar.style.width = progress.percentage + '%';
+    progressText.textContent = progress.percentage + '%';
+
+    // 更新詳細訊息
+    progressDetails.textContent = progress.message;
+
+    // 根據階段更新訊息
+    const loadingMessage = document.getElementById('loadingMessage');
+    if (progress.stage === 'code_analysis') {
+        loadingMessage.textContent = '正在分析程式碼...';
+    } else if (progress.stage === 'git_analysis') {
+        loadingMessage.textContent = '正在分析 Git 歷史...';
+    } else if (progress.stage === 'completed') {
+        loadingMessage.textContent = '分析完成！';
+    } else if (progress.stage === 'error') {
+        loadingMessage.textContent = '分析發生錯誤';
     }
 }
 

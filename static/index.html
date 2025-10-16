@@ -46,7 +46,9 @@
                             <small>這些檔案在 Git 異動統計中會被排除</small>
                         </div>
                         <div class="input-group">
-                            <!-- 空白，保持對稱 -->
+                            <label for="filterAuthors">指定作者 (Git 分析)：</label>
+                            <textarea id="filterAuthors" rows="4" placeholder="一行一個作者名稱，例如：&#10;Alice&#10;Bob&#10;Charlie"></textarea>
+                            <small>只顯示這些作者的 commit 統計，留空則顯示全部作者（不區分大小寫）</small>
                         </div>
                     </div>
                     <div class="input-row">
@@ -120,6 +122,10 @@
                     <div class="config-item">
                         <strong>排除檔案 (Git):</strong>
                         <span id="summaryExcludeGitFiles">無</span>
+                    </div>
+                    <div class="config-item">
+                        <strong>指定作者 (Git):</strong>
+                        <span id="summaryFilterAuthors">全部</span>
                     </div>
                     <div class="config-item">
                         <strong>Git 起始 Commit:</strong>

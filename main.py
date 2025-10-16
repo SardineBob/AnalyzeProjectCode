@@ -41,6 +41,7 @@ class AnalyzeRequest(BaseModel):
     exclude_folders: Optional[List[str]] = None  # 排除的資料夾列表（程式碼分析）
     exclude_code_files: Optional[List[str]] = None  # 排除的檔案列表（程式碼分析）
     exclude_git_files: Optional[List[str]] = None  # 排除的檔案列表（Git 分析）
+    filter_authors: Optional[List[str]] = None  # 指定的作者列表（Git 分析，空則顯示全部）
     start_commit: Optional[str] = None  # Git 起始 commit ID
     end_commit: Optional[str] = None  # Git 結束 commit ID
     max_commits: Optional[int] = 1000  # Git 最大分析 commit 數量
@@ -151,6 +152,7 @@ async def analyze_git(request: AnalyzeRequest) -> Dict[str, Any]:
         analyzer = GitAnalyzer(
             request.project_path,
             exclude_files=request.exclude_git_files,
+            filter_authors=request.filter_authors,
             start_commit=request.start_commit,
             end_commit=request.end_commit
         )
@@ -198,6 +200,7 @@ def run_analysis_sync(request: AnalyzeRequest, session_id: str) -> Dict[str, Any
             git_analyzer = GitAnalyzer(
                 request.project_path,
                 exclude_files=request.exclude_git_files,
+                filter_authors=request.filter_authors,
                 start_commit=request.start_commit,
                 end_commit=request.end_commit,
                 progress_tracker=tracker
@@ -287,6 +290,7 @@ class SaveConfigRequest(BaseModel):
     exclude_folders: Optional[List[str]] = None
     exclude_code_files: Optional[List[str]] = None
     exclude_git_files: Optional[List[str]] = None
+    filter_authors: Optional[List[str]] = None
     start_commit: Optional[str] = None
     end_commit: Optional[str] = None
     max_commits: Optional[int] = 1000
@@ -309,6 +313,7 @@ async def save_config(request: SaveConfigRequest):
             'exclude_folders': request.exclude_folders or [],
             'exclude_code_files': request.exclude_code_files or [],
             'exclude_git_files': request.exclude_git_files or [],
+            'filter_authors': request.filter_authors or [],
             'start_commit': request.start_commit or '',
             'end_commit': request.end_commit or '',
             'max_commits': request.max_commits or 1000

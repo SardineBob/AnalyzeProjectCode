@@ -14,6 +14,7 @@ class GitAnalyzer:
     """Git 歷史分析器"""
 
     def __init__(self, project_path: str, exclude_files: List[str] = None,
+                 filter_authors: List[str] = None,
                  start_commit: str = None, end_commit: str = None, progress_tracker=None):
         """
         初始化 Git 分析器
@@ -21,6 +22,7 @@ class GitAnalyzer:
         Args:
             project_path: 專案資料夾路徑
             exclude_files: 排除的檔案名稱列表
+            filter_authors: 指定的作者名稱列表（空則顯示全部作者）
             start_commit: 起始 commit ID（較舊的節點）
             end_commit: 結束 commit ID（較新的節點）
             progress_tracker: 進度追蹤器實例
@@ -35,6 +37,7 @@ class GitAnalyzer:
             raise ValueError(f"該路徑不是有效的 Git 倉庫: {project_path}")
 
         self.exclude_files = exclude_files or []
+        self.filter_authors = filter_authors or []
         self.start_commit = start_commit
         self.end_commit = end_commit
         self.progress_tracker = progress_tracker
@@ -67,8 +70,13 @@ class GitAnalyzer:
 
         # 遍歷 commits
         for commit in commits_list:
-            commit_count += 1
             author_name = commit.author.name
+
+            # 如果有指定作者過濾，只處理指定的作者
+            if self.filter_authors and not self._is_filtered_author(author_name):
+                continue
+
+            commit_count += 1
             authors.add(author_name)
             author_commits[author_name] += 1
 
@@ -229,6 +237,32 @@ class GitAnalyzer:
             # 3. 路徑結尾匹配（例如 "/config.json" 匹配 "src/config.json"）
             #if normalized_path.endswith(exclude_normalized):
             #    return True
+
+        return False
+
+    def _is_filtered_author(self, author_name: str) -> bool:
+        """
+        檢查作者是否在指定的過濾列表中
+
+        Args:
+            author_name: 作者名稱
+
+        Returns:
+            True 如果該作者在過濾列表中（應該被包含）
+        """
+        if not self.filter_authors:
+            return True  # 沒有指定過濾，所有作者都包含
+
+        # 檢查作者名稱是否在過濾列表中（不區分大小寫）
+        author_name_lower = author_name.lower().strip()
+        for filter_author in self.filter_authors:
+            filter_author = filter_author.strip()
+            if not filter_author:
+                continue
+
+            # 不區分大小寫的完整匹配
+            if filter_author.lower() == author_name_lower:
+                return True
 
         return False
 

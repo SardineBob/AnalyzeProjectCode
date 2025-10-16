@@ -1,5 +1,5 @@
 {
-  "project_path": "C:\\Bob\\01.Project\\FUNDWEBAP-JOPV29\\FUNDWEBAP",
+  "project_path": "C:\\Bob\\01.Project\\FUNDWEBAP-JOPV29\\FUNDWEBAP\\DSIC.Normal",
   "exclude_folders": [],
   "exclude_code_files": [],
   "exclude_git_files": [
@@ -14,8 +14,9 @@
     "dsic.main.min.js",
     "dsic.main.min.js.map"
   ],
-  "start_commit": "1948eea8daa276cea6f36eca8833b426e03dbb6b",
+  "filter_authors": [],
+  "start_commit": "c42ff8e4aeece165c5157e2944c8509853a1bc14",
   "end_commit": "",
   "max_commits": 10000,
-  "last_updated": "2025-10-16T13:56:48.545897"
+  "last_updated": "2025-10-16T15:03:55.711405"
 }

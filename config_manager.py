@@ -79,6 +79,7 @@ class ConfigManager:
             'exclude_folders': [],
             'exclude_code_files': [],
             'exclude_git_files': [],
+            'filter_authors': [],
             'start_commit': '',
             'end_commit': '',
             'max_commits': 1000,

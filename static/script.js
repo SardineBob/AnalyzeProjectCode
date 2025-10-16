@@ -10,6 +10,7 @@ const projectPathInput = document.getElementById('projectPath');
 const excludeFoldersInput = document.getElementById('excludeFolders');
 const excludeCodeFilesInput = document.getElementById('excludeCodeFiles');
 const excludeGitFilesInput = document.getElementById('excludeGitFiles');
+const filterAuthorsInput = document.getElementById('filterAuthors');
 const startCommitInput = document.getElementById('startCommit');
 const endCommitInput = document.getElementById('endCommit');
 const maxCommitsInput = document.getElementById('maxCommits');
@@ -56,6 +57,11 @@ async function analyzeProject() {
         .map(line => line.trim())
         .filter(line => line.length > 0);
 
+    const filterAuthors = filterAuthorsInput.value
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+
     const startCommit = startCommitInput.value.trim() || null;
     const endCommit = endCommitInput.value.trim() || null;
     const maxCommits = parseInt(maxCommitsInput.value) || 1000;
@@ -81,6 +87,7 @@ async function analyzeProject() {
             exclude_folders: excludeFolders.length > 0 ? excludeFolders : null,
             exclude_code_files: excludeCodeFiles.length > 0 ? excludeCodeFiles : null,
             exclude_git_files: excludeGitFiles.length > 0 ? excludeGitFiles : null,
+            filter_authors: filterAuthors.length > 0 ? filterAuthors : null,
             start_commit: startCommit,
             end_commit: endCommit,
             max_commits: maxCommits
@@ -583,6 +590,10 @@ async function loadLastConfig() {
             excludeGitFilesInput.value = config.exclude_git_files.join('\n');
         }
 
+        if (config.filter_authors && config.filter_authors.length > 0) {
+            filterAuthorsInput.value = config.filter_authors.join('\n');
+        }
+
         if (config.start_commit) {
             startCommitInput.value = config.start_commit;
         }
@@ -619,11 +630,17 @@ async function saveCurrentConfig() {
             .map(line => line.trim())
             .filter(line => line.length > 0);
 
+        const filterAuthors = filterAuthorsInput.value
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+
         const configData = {
             project_path: projectPathInput.value.trim(),
             exclude_folders: excludeFolders.length > 0 ? excludeFolders : null,
             exclude_code_files: excludeCodeFiles.length > 0 ? excludeCodeFiles : null,
             exclude_git_files: excludeGitFiles.length > 0 ? excludeGitFiles : null,
+            filter_authors: filterAuthors.length > 0 ? filterAuthors : null,
             start_commit: startCommitInput.value.trim() || null,
             end_commit: endCommitInput.value.trim() || null,
             max_commits: parseInt(maxCommitsInput.value) || 1000
@@ -670,6 +687,11 @@ function fillConfigSummary() {
     const excludeGitFiles = excludeGitFilesInput.value.trim();
     document.getElementById('summaryExcludeGitFiles').textContent =
         excludeGitFiles ? excludeGitFiles.split('\n').join(', ') : '無';
+
+    // 指定作者 (Git)
+    const filterAuthors = filterAuthorsInput.value.trim();
+    document.getElementById('summaryFilterAuthors').textContent =
+        filterAuthors ? filterAuthors.split('\n').join(', ') : '全部';
 
     // Git 起始 Commit
     const startCommit = startCommitInput.value.trim();

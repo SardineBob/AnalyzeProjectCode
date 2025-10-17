@@ -241,6 +241,27 @@
                     <h3 style="margin-bottom: 20px;">開發者活躍度分析</h3>
                     <canvas id="developerActivityChart"></canvas>
                 </div>
+
+                <!-- 作者品質評分 -->
+                <div id="authorQualitySection" style="margin-top: 40px; display: none;">
+                    <h3 style="margin-bottom: 20px;">👤 作者品質評分</h3>
+                    <div class="table-container">
+                        <table id="authorQualityTable">
+                            <thead>
+                                <tr>
+                                    <th>作者</th>
+                                    <th title="總分範圍：0-100，綜合評估作者的整體品質">總分 (?)</th>
+                                    <th title="S級:90-100分(卓越)、A級:80-89分(優秀)、B級:70-79分(良好)、C級:60-69分(普通)、D級:<60分(需改善)">等級 (?)</th>
+                                    <th title="評估平均每commit修改檔案數(20分)、最近活躍度(5分)、message品質(15分)，滿分40分">Commit行為 (?)</th>
+                                    <th title="評估修改範圍廣度(8分)、程式碼變動規模(7分)、修改品質穩定性(15分，5天內返工比例)，滿分30分">工作品質與範圍 (?)</th>
+                                    <th title="評估修改檔案總數、活躍時間跨度、專案貢獻比例，滿分30分">活躍度 (?)</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
             </section>
         </div>
 
@@ -249,7 +270,7 @@
             <div class="footer-content">
                 <div class="footer-section">
                     <h4>程式碼分析工具</h4>
-                    <p>版本：v2.3</p>
+                    <p>版本：v2.4</p>
                     <p>發布日期：2025-10-16</p>
                 </div>
                 <div class="footer-section">

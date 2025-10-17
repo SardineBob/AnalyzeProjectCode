@@ -20,6 +20,7 @@ from code_analyzer import CodeAnalyzer
 from git_analyzer import GitAnalyzer
 from progress_tracker import ProgressTracker, ProgressUpdate
 from config_manager import ConfigManager
+from author_quality_scorer import AuthorQualityScorer
 
 
 def get_resource_path(relative_path: str) -> Path:
@@ -44,7 +45,7 @@ def get_resource_path(relative_path: str) -> Path:
 app = FastAPI(
     title="程式碼分析工具",
     description="分析專案程式碼規模、複雜度與 Git 版本控制資訊",
-    version="2.2.0"
+    version="2.4.0"
 )
 
 # 全域進度佇列和執行緒池
@@ -217,6 +218,7 @@ def run_analysis_sync(request: AnalyzeRequest, session_id: str) -> Dict[str, Any
 
         # Git 分析（如果是 Git 倉庫）
         git_result = None
+        author_quality_scores = None
         try:
             tracker.update("git_analysis", 55, 100, "正在分析 Git 歷史...")
             git_analyzer = GitAnalyzer(
@@ -229,6 +231,13 @@ def run_analysis_sync(request: AnalyzeRequest, session_id: str) -> Dict[str, Any
             )
             git_result = git_analyzer.analyze(max_commits=request.max_commits or 1000)
             tracker.update("git_analysis", 95, 100, "Git 分析完成")
+
+            # 計算作者品質評分
+            if git_result and 'author_quality_data' in git_result:
+                tracker.update("quality_scoring", 97, 100, "正在計算作者品質評分...")
+                scorer = AuthorQualityScorer()
+                author_quality_scores = scorer.calculate_scores(git_result['author_quality_data'])
+                tracker.update("quality_scoring", 99, 100, "品質評分完成")
         except ValueError:
             # 不是 Git 倉庫，跳過 Git 分析
             tracker.update("git_analysis", 95, 100, "專案不是 Git 倉庫，跳過 Git 分析")
@@ -237,7 +246,8 @@ def run_analysis_sync(request: AnalyzeRequest, session_id: str) -> Dict[str, Any
 
         return {
             "code": code_result,
-            "git": git_result
+            "git": git_result,
+            "author_quality_scores": author_quality_scores
         }
     except Exception as e:
         tracker.update("error", 0, 100, f"分析失敗：{str(e)}")

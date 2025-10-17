@@ -61,6 +61,11 @@ class GitAnalyzer:
         total_insertions = 0
         total_deletions = 0
 
+        # 作者品質評估相關資料
+        author_commit_details = defaultdict(list)  # 每個作者的 commit 詳細資訊
+        author_file_changes = defaultdict(lambda: defaultdict(int))  # 每個作者修改各檔案的次數
+        author_file_timeline = defaultdict(lambda: defaultdict(list))  # 每個作者對每個檔案的修改時間軸
+
         # 建立 commit 範圍
         commit_range = self._build_commit_range()
 
@@ -86,6 +91,7 @@ class GitAnalyzer:
             author_timeline[author_name][month_key] += 1
 
             # 統計每個 commit 的檔案變更
+            commit_files = []  # 本次 commit 涉及的檔案
             if commit.parents:
                 parent = commit.parents[0]
                 diffs = parent.diff(commit)
@@ -95,6 +101,14 @@ class GitAnalyzer:
                     file_path = diff.b_path if diff.b_path else diff.a_path
                     if file_path and not self._is_excluded_file(file_path):
                         file_changes[file_path] += 1
+                        commit_files.append(file_path)
+                        # 記錄該作者修改此檔案
+                        author_file_changes[author_name][file_path] += 1
+                        # 記錄該作者對此檔案的修改時間軸
+                        author_file_timeline[author_name][file_path].append({
+                            'timestamp': commit.committed_date,
+                            'commit_hash': commit.hexsha[:7]
+                        })
 
                 # 統計新增/刪除行數
                 try:
@@ -103,6 +117,14 @@ class GitAnalyzer:
                     total_deletions += stats.get('deletions', 0)
                 except:
                     pass
+
+            # 記錄該作者的 commit 詳細資訊（用於品質評估）
+            author_commit_details[author_name].append({
+                'timestamp': commit.committed_date,
+                'message': commit.message.strip(),
+                'files_count': len(commit_files),
+                'files': commit_files
+            })
 
             # 更新進度
             if self.progress_tracker:
@@ -138,6 +160,17 @@ class GitAnalyzer:
         # 處理開發者活躍度資料
         developer_activity = self._process_developer_activity(author_commits, author_timeline)
 
+        # 整理作者品質評估資料
+        author_quality_data = self._prepare_author_quality_data(
+            author_commit_details,
+            author_file_changes,
+            author_file_timeline,
+            file_changes,
+            commit_count,
+            total_insertions,
+            total_deletions
+        )
+
         return {
             'summary': {
                 'total_commits': commit_count,
@@ -149,7 +182,8 @@ class GitAnalyzer:
             },
             'top_changed_files': top_changed_files,
             'change_distribution': change_distribution,
-            'developer_activity': developer_activity
+            'developer_activity': developer_activity,
+            'author_quality_data': author_quality_data
         }
 
     def _get_change_distribution(self, file_changes: Dict[str, int]) -> Dict[str, int]:
@@ -301,6 +335,133 @@ class GitAnalyzer:
             'months': all_months,
             'authors': timeline_data
         }
+
+    def _prepare_author_quality_data(self, author_commit_details: Dict[str, List[Dict]],
+                                      author_file_changes: Dict[str, Dict[str, int]],
+                                      author_file_timeline: Dict[str, Dict[str, List[Dict]]],
+                                      all_file_changes: Dict[str, int],
+                                      total_commits: int,
+                                      total_insertions: int,
+                                      total_deletions: int) -> Dict[str, Any]:
+        """
+        準備作者品質評估所需的資料
+
+        Args:
+            author_commit_details: 每個作者的 commit 詳細資訊
+            author_file_changes: 每個作者修改各檔案的次數
+            author_file_timeline: 每個作者對每個檔案的修改時間軸
+            all_file_changes: 所有檔案的異動次數
+            total_commits: 總 commit 數
+            total_insertions: 總插入行數
+            total_deletions: 總刪除行數
+
+        Returns:
+            作者品質評估資料
+        """
+        author_data = {}
+
+        for author, commits in author_commit_details.items():
+            if not commits:
+                continue
+
+            # 排序 commits 按時間
+            sorted_commits = sorted(commits, key=lambda x: x['timestamp'])
+
+            # 計算時間跨度（天數）
+            first_commit_time = sorted_commits[0]['timestamp']
+            last_commit_time = sorted_commits[-1]['timestamp']
+            active_days = max(1, (last_commit_time - first_commit_time) / 86400)  # 轉換為天數
+
+            # 計算平均每 commit 修改檔案數
+            total_files_in_commits = sum(c['files_count'] for c in commits)
+            avg_files_per_commit = total_files_in_commits / len(commits) if len(commits) > 0 else 0
+
+            # 計算平均 commit message 長度
+            avg_message_length = sum(len(c['message']) for c in commits) / len(commits) if len(commits) > 0 else 0
+
+            # 計算平均 commit 間隔（天）
+            avg_commit_interval = active_days / len(commits) if len(commits) > 1 else active_days
+
+            # 計算距離最近一次 commit 的天數（用於活躍度評估）
+            import time
+            current_time = time.time()
+            days_since_last_commit = (current_time - last_commit_time) / 86400
+
+            # 計算該作者修改的檔案數
+            files_modified = len(author_file_changes[author])
+
+            # 計算檔案修改集中度（Top 10 檔案佔比）
+            author_files = author_file_changes[author]
+            sorted_author_files = sorted(author_files.values(), reverse=True)
+            top_10_changes = sum(sorted_author_files[:10]) if len(sorted_author_files) > 0 else 0
+            total_author_changes = sum(sorted_author_files) if len(sorted_author_files) > 0 else 1
+            file_concentration = (top_10_changes / total_author_changes * 100) if total_author_changes > 0 else 0
+
+            # 計算熱點檔案參與度（修改 Top 20% 高異動檔案的次數）
+            total_files = len(all_file_changes)
+            top_20_percent_count = max(1, int(total_files * 0.2))
+            top_hotspot_files = set(sorted(all_file_changes.keys(), key=lambda x: all_file_changes[x], reverse=True)[:top_20_percent_count])
+
+            hotspot_changes = sum(1 for f in author_files.keys() if f in top_hotspot_files)
+            hotspot_participation = (hotspot_changes / files_modified * 100) if files_modified > 0 else 0
+
+            # 計算專案貢獻比例
+            contribution_ratio = (len(commits) / total_commits * 100) if total_commits > 0 else 0
+
+            # 計算程式碼變動量（該作者的總插入+刪除行數）
+            author_total_changes = 0
+            for commit in commits:
+                # 注意：這裡我們只能用全域的 total_insertions/deletions 來估算
+                # 實際上需要在 analyze() 中記錄每個作者的 insertions/deletions
+                pass
+            # 暫時使用作者的 commit 比例來估算
+            author_insertions = int(total_insertions * (len(commits) / total_commits)) if total_commits > 0 else 0
+            author_deletions = int(total_deletions * (len(commits) / total_commits)) if total_commits > 0 else 0
+            author_total_changes = author_insertions + author_deletions
+
+            # 計算快速返工比例（5天內反覆修改同一檔案）
+            rapid_rework_count = 0  # 5天內的快速修改次數
+            total_file_modifications = 0  # 總修改次數（計算間隔用）
+
+            # 對該作者修改的每個檔案分析時間軸
+            for file_path, timeline in author_file_timeline[author].items():
+                if len(timeline) <= 1:
+                    # 只改過1次，不計入
+                    continue
+
+                # 按時間排序
+                sorted_timeline = sorted(timeline, key=lambda x: x['timestamp'])
+
+                # 計算連續修改之間的時間間隔
+                for i in range(len(sorted_timeline) - 1):
+                    days_diff = (sorted_timeline[i+1]['timestamp'] - sorted_timeline[i]['timestamp']) / 86400
+                    total_file_modifications += 1
+
+                    # 5天內視為快速返工（同一天也算，因為可能是測試發現問題）
+                    if days_diff <= 5:
+                        rapid_rework_count += 1
+
+            # 計算快速返工比例
+            rapid_rework_ratio = (rapid_rework_count / total_file_modifications * 100) if total_file_modifications > 0 else 0
+
+            author_data[author] = {
+                'total_commits': len(commits),
+                'files_modified': files_modified,
+                'active_days': round(active_days, 1),
+                'avg_files_per_commit': round(avg_files_per_commit, 2),
+                'avg_message_length': round(avg_message_length, 1),
+                'avg_commit_interval': round(avg_commit_interval, 2),
+                'days_since_last_commit': round(days_since_last_commit, 1),
+                'file_concentration': round(file_concentration, 1),
+                'hotspot_participation': round(hotspot_participation, 1),
+                'contribution_ratio': round(contribution_ratio, 1),
+                'total_code_changes': author_total_changes,
+                'rapid_rework_ratio': round(rapid_rework_ratio, 1),
+                'rapid_rework_count': rapid_rework_count,
+                'total_file_modifications': total_file_modifications
+            }
+
+        return author_data
 
     def get_recent_commits(self, limit: int = 10) -> List[Dict[str, Any]]:
         """

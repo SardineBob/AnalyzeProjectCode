@@ -1,5 +1,5 @@
 {
-  "project_path": "C:\\Bob\\01.Project\\FUNDWEBAP-JOPV29\\FUNDWEBAP",
+  "project_path": "C:\\Bob\\01.Project\\CLOUDWEBAP-JOPV25\\CLOUDWEBAP",
   "exclude_folders": [],
   "exclude_code_files": [],
   "exclude_git_files": [
@@ -15,8 +15,8 @@
     "dsic.main.min.js.map"
   ],
   "filter_authors": [],
-  "start_commit": "1948eea8daa276cea6f36eca8833b426e03dbb6b",
+  "start_commit": "46df76f88577d2dd3d111e537d5987e25c375177",
   "end_commit": "",
-  "max_commits": 10000,
-  "last_updated": "2025-10-16T15:14:37.555908"
+  "max_commits": 1000000,
+  "last_updated": "2025-10-17T15:09:14.237222"
 }
